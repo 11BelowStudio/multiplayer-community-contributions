@@ -38,11 +38,12 @@ namespace Netcode.Extensions.NetObjPool2
 
         public bool HasInitialized => _hasInitialized;
 
-        /// <summary>Action that will be invoked upon the NetworkManager Singleton being ready.</summary>
+        /// <summary>Action that will be invoked upon the NetworkObjectPool2 Singleton being ready.</summary>
         private static Action _onPoolInitializedAction;
 
         //private static Action<string, NetworkObjectReference> _onPrefabWithGivenIdentifierInstantiated;
 
+        /// <summary>Action that will be invoked upon the NetworkObjectPool2 Singleton being destroyed.</summary>
         private static Action _onDestroySingletonOneShot;
 
         public void Awake()
@@ -82,11 +83,11 @@ namespace Netcode.Extensions.NetObjPool2
         
 
         /// <summary>
-        /// Pass an action to the pool, to be done when it's initialized.
+        /// Pass an action to the pool, to be done when it's initialized. If it's already been initialized, don't do the thing.
         /// </summary>
         /// <param name="doThis">Action to perform when the pool has been initialized.</param>
         /// <returns>True if the action has been queued to be done on initialization.
-        /// False if the pool is already initialized (can't queue this action)</returns>
+        /// False if the pool is already initialized (can't queue this action) or if not the server.</returns>
         public bool DoThisWhenInititalized(Action doThis)
         {
             if (!NetworkManager.Singleton.IsServer) return false;
@@ -346,14 +347,14 @@ namespace Netcode.Extensions.NetObjPool2
 
         /// <summary>
         /// Registers all objects in <see cref="pooledPrefabsList"/> to the cache.
-        /// Invokes the _OnPoolInitializedAction (and clears it)
+        /// Invokes the _OnPoolInitializedAction (and also makes that action null after invoking it)
         /// </summary>
         public void InitializePool()
         {
             if (_hasInitialized) return;
             foreach (var configObject in pooledPrefabsList)
             {
-                RegisterPrefabInternal(configObject.prefab, configObject.prewarmCount, configObject.poolID, configObject.objectType);
+                RegisterPrefabInternal(configObject.prefab, configObject.prewarmCount, configObject.poolID);
             }
             _hasInitialized = true;
             
@@ -400,9 +401,9 @@ namespace Netcode.Extensions.NetObjPool2
     internal class PooledPrefabInstanceHandler2 : INetworkPrefabInstanceHandler
     {
         private GameObject m_Prefab;
-        private NetworkObjectPool m_Pool;
+        private NetworkObjectPool2 m_Pool;
 
-        public PooledPrefabInstanceHandler2(GameObject prefab, NetworkObjectPool pool)
+        public PooledPrefabInstanceHandler2(GameObject prefab, NetworkObjectPool2 pool)
         {
             m_Prefab = prefab;
             m_Pool = pool;
