@@ -7,60 +7,21 @@ using UnityEngine.Assertions;
 
 namespace Netcode.Extensions
 {
-    /// <summary>
-    /// Object Pool for networked objects, used for controlling how objects are spawned by Netcode. Netcode by default will allocate new memory when spawning new
-    /// objects. With this Networked Pool, we're using custom spawning to reuse objects.
-    /// Hooks to NetworkManager's prefab handler to intercept object spawning and do custom actions
-    /// </summary>
-    public class NetworkObjectPool : NetworkBehaviour
+    public class NetworkObjectPool : MonoBehaviour
     {
-
-        private static NetworkObjectPool _instance;
-
-        public static NetworkObjectPool Singleton => _instance;
+        [SerializeField]
+        NetworkManager m_NetworkManager;
 
         [SerializeField]
-        private NetworkManager m_NetworkManager;
+        List<PoolConfigObject> PooledPrefabsList;
 
-        [SerializeField]
-        private List<PoolConfigObject> PooledPrefabsList;
+        HashSet<GameObject> prefabs = new HashSet<GameObject>();
 
-        private HashSet<GameObject> prefabs = new HashSet<GameObject>();
-
-        private Dictionary<GameObject, Queue<NetworkObject>> pooledObjects = new Dictionary<GameObject, Queue<NetworkObject>>();
+        Dictionary<GameObject, Queue<NetworkObject>> pooledObjects = new Dictionary<GameObject, Queue<NetworkObject>>();
 
         public void Awake()
         {
-            if (_instance != null && _instance != this)
-            {
-                Destroy(this.gameObject);
-                return;
-            }
-            else
-            {
-                _instance = this;
-            }
-        }
-
-        public override void OnNetworkSpawn()
-        {
-            m_NetworkManager = NetworkManager.Singleton;
             InitializePool();
-        }
-
-        public override void OnNetworkDespawn()
-        {
-            ClearPool();
-        }
-
-        public override void OnDestroy()
-        {
-            if (_instance == this)
-            {
-                _instance = null;
-            }
-            
-            base.OnDestroy();
         }
 
         public void OnValidate()
@@ -70,23 +31,8 @@ namespace Netcode.Extensions
                 var prefab = PooledPrefabsList[i].Prefab;
                 if (prefab != null)
                 {
-                    Assert.IsNotNull(
-                        prefab.GetComponent<NetworkObject>(),
-                        $"{nameof(NetworkObjectPool)}: Pooled prefab \"{prefab.name}\" at index {i.ToString()} has no {nameof(NetworkObject)} component."
-                    );
-
+                    Assert.IsNotNull(prefab.GetComponent<NetworkObject>(), $"{nameof(NetworkObjectPool)}: Pooled prefab \"{prefab.name}\" at index {i.ToString()} has no {nameof(NetworkObject)} component.");
                 }
-
-                var prewarmCount = PooledPrefabsList[i].PrewarmCount;
-                if (prewarmCount < 0)
-                {
-                    Debug.LogWarning($"{nameof(NetworkObjectPool)}: Pooled prefab at index {i.ToString()} has a negative prewarm count! Making it not negative.");
-                    var thisPooledPrefab = PooledPrefabsList[i];
-                    thisPooledPrefab.PrewarmCount *= -1;
-                    PooledPrefabsList[i] = thisPooledPrefab;
-                }
-
-                
             }
         }
 
